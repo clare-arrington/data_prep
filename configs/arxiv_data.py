@@ -50,25 +50,6 @@ def make_target_list(path):
 
 main_path = '/home/clare/Data/corpus_data/arxiv'
 
-targets =  ['virus', 'bit', 'memory', 'long', 
-            'float', 'web', 'worm', 'bug', 'structure',
-            'cloud', 'ram', 'apple', 'cookie', 
-            'spam',  'intelligence', 'artificial', 
-            'time', 'work', 'action', 'goal', 'branch',
-            'power', 'result', 'complex', 'root',
-            'process', 'child', 'language', 'term',
-            'rule', 'law', 'accuracy', 'mean', 
-            'scale', 'variable', 'rest', 
-            'normal', 'network', 'frame', 'constraint', 
-            'subject', 'order', 'set', 'learn', 'machine',
-            'problem', 'scale', 'large', 
-            'model', 'based', 'theory', 'example', 
-            'function', 'field', 'space', 'state', 
-            'environment', 'compatible', 'case', 'natural', 
-            'agent', 'utility', 'absolute', 'value', 
-            'range', 'knowledge', 'symbol', 'true', 
-            'class', 'object', 'fuzzy', 'global', 'local', 
-            'search', 'traditional', 'noise', 'system']
 
 print(f'{len(targets)} targets loaded, ex. {", ".join(targets[:3])}')
 

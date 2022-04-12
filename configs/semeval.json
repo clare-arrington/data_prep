@@ -1,0 +1,8 @@
+{   "dataset_name": "semeval",
+    "corpora_target_file": {
+        "1800s" : "/targets.txt",
+        "2000s" : "/targets.txt"
+    },
+    "pattern": "[a-z]+_nn|[a-z]+_vb|[a-z]+",
+    "subset_path" : "/subset"
+}

@@ -1,0 +1,9 @@
+{   "dataset_name": "time",
+    "corpora_target_file": {
+        "1800s" : "/targets.txt",
+        "2000s" : "/targets.txt",
+        "coca"  : "/targets.txt"
+    },
+    "pattern": "[a-z]+",
+    "subset_path" : "/subset"
+}
