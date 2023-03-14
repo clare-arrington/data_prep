@@ -1,10 +1,11 @@
 #%%
-from collections import defaultdict
 from tqdm import tqdm
 import pandas as pd
 import spacy 
 import pickle
 import re
+
+## Helper file for run_get_data; contains the called functions
 
 ## Trim the sentence around a term, either the section before or after
 ## Similar approach for both, just differently added
@@ -25,84 +26,131 @@ def trim(old_sent, pre=True, cutoff=100):
 
     return new_sent
 
-def parse_sentences(lines, pattern):
+#%%
+## Load corpus and preprocess sentences
+def get_lines(corpus_path, delimiter):
+    with open(corpus_path) as fin:
+        lines = fin.read()
+        lines = re.split(delimiter, lines)
+    lines = [line.lower().strip() for line in lines]
+    print(f'\t{len(lines):,} sentences pulled')
+    lines = list(set(lines))
+    print(f'\t{len(lines):,} sentences left after duplicates removed')
 
-    sent_idx = 0
+    return lines
+
+## Find every target and index its location information
+def index_data(sent_idx, word_idx, lines, config): 
     sentence_data = []
     word_data = []
-    word_idx = defaultdict(int)
 
     for line in tqdm(lines):
-        line = line.lower().strip()
-        filtered_words = re.findall(pattern, line)
+        if line == '':
+            continue
+        if config['pattern'] is not None:
+            filtered_words = re.findall(config['pattern'], line)
+        else:
+            filtered_words = line.split(' ')
 
+        # print(filtered_words)
         word_index_sent = []
         for i, word in enumerate(filtered_words):
+            if config['POS_delimiter'] is not None: 
+                try:
+                    head, pos = word.split(config['POS_delimiter'])
+                except:
+                    if  ('__' in word or 
+                        'www' in word or 
+                        'http' in word or 
+                        '.pdf' in word or 
+                        '.doc' in word):                       
+                        continue
+                    ## TODO: why was this added?
+                    if '_' in word:
+                        words = word.split('_')
+                        pos = words.pop()
+                        head = words.pop()
+                        for word in words:
+                            word_index_sent.append(word)
+                    else:
+                        word_index_sent.append(word)
+                    continue
+            else:
+                head = word
+                pos = None
+
+            ## Skip certain words
+            if  (len(head) < 2    or 
+                head in config['stopwords'] or 
+                pos not in config['POS_labels']):
+                word_index_sent.append(word)
+                continue
 
             index = word_idx[word]
             word_idx[word] += 1
-
-            ## TODO: this is just for semeval. Needed?
-            word, *etc = word.split('_')
             word_index = f'{word}.{index}'
 
-            # Get the words before and after the current target
+            # Construct the context around the target word
             pre = ' '.join(filtered_words[:i])
-            post = ' '.join(filtered_words[i + 1:])
-
             pre = trim(pre)
+            post = ' '.join(filtered_words[i + 1:])
             post = trim(post, pre=False)
 
             formatted_sent = (pre, word, post)
             length = len(pre) + len(post)
 
+            ## Store all the relevant target information
             target_info = [word_index, word, formatted_sent, length, sent_idx]
             word_data.append(target_info)
-
             word_index_sent.append(word_index)
 
+        ## Store all the relevant sentence information
         sentence_info = [sent_idx, line, word_index_sent]
         sentence_data.append(sentence_info)
         sent_idx += 1
 
-    return sentence_data, word_data
+    return sentence_data, word_data, sent_idx
 
-#%%
-def index_word_data(corpus_path, pattern): 
-    
-    ## TODO: need to go through the preprocess step here if needed
-    # data = pd.read_pickle(data_path)
-    # # data['processed_sentence'] = data['processed_sentence'].apply(literal_eval)
-    # print(f'\nAll Sents: {len(data):,}')
-    # data.drop_duplicates(subset=['sentence'], inplace=True)
-    # print(f'All Sents after duplicates removed: {len(data):,}')
+## Cleanup and store indexed data
+def postprocess_data(word_data, sentence_data, word_idx, cutoff_count=50):
 
-    with open(corpus_path) as fin:
-        lines = [line.lower().strip() for line in fin.readlines()]
-        print(f'\t{len(lines):,} sentences pulled')
-        lines = list(set(lines))
-        print(f'\t{len(lines):,} sentences left after duplicates removed')
-
-    sentence_data, word_data = parse_sentences(lines, pattern)
-    
     ## Convert to dataframes
     word_data = pd.DataFrame(word_data, columns=[
         'word_idx', 'target', 'formatted_sent', 'length', 'sent_idx'])
     sentence_data = pd.DataFrame(sentence_data, columns=[
         'sent_idx', 'sent', 'word_idx_sent'])
 
+    ## Filter out indexed words that are too infrequent
+    ## TODO: the indexed word will still be in the modified sentence.
+    ## Need to brainstorm a clean way to remove but it doesn't harm anything
+    vc = word_data.target.value_counts()
+    drop_words = vc[vc <= cutoff_count].index
+    drop_rows = word_data.target.isin(drop_words)
+    word_data = word_data[~drop_rows]
+    for word in drop_words:
+        word_idx.pop(word, None)
+
     return sentence_data, word_data
 
+## Output the final dataframes
 def save_data(sentence_data, word_data, output_path, corpus_name):
+    print('\nBeginning to save sentence data')
     sentence_data.set_index('sent_idx', inplace=True)
-    sentence_data.to_pickle(f'{output_path}/{corpus_name}_indexed_sentences.pkl')
-    print('\nSentence data saved!')
+    sentence_data.to_pickle(
+        f'{output_path}/{corpus_name}_indexed_sentences.pkl',
+        protocol=pickle.HIGHEST_PROTOCOL)
+    print('Sentence data saved!')
 
+    print('\nBeginning to save word data')
     word_data.set_index('word_idx', inplace=True)
-    word_data.to_pickle(f'{output_path}/{corpus_name}_indexed_words.pkl')
+    # word_data.drop_duplicates(inplace=True)
+    word_data.to_pickle(
+        f'{output_path}/{corpus_name}_indexed_words.pkl', 
+        protocol=pickle.HIGHEST_PROTOCOL)
     print('Word data saved!\n\n')
 # %%
 ## TODO: fixing for date is bad; but leave it for now
+## Is this old?
 def preprocess_data(docs, corpus_name, path):
     nlp = spacy.load("en_core_web_sm")
 
@@ -136,4 +184,3 @@ def preprocess_data(docs, corpus_name, path):
                 )
     sentences.set_index('sent_id', inplace=True)
     sentences.to_pickle(path)
-
