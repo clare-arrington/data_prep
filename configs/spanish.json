@@ -1,0 +1,9 @@
+{   "dataset_name": "spanish",
+    "corpora": [
+        "old", "modern"
+    ],
+    "language": "spanish",
+    "POS_labeled" : 0,
+    "delimiter"   : ".\n",
+    "subset_path" : "/subset"
+}
