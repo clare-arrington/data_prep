@@ -3,7 +3,14 @@
         "old", "modern"
     ],
     "language": "spanish",
-    "POS_labeled" : 0,
     "delimiter"   : ".\n",
-    "subset_path" : "/subset"
+    "subset_path" : "/subset",
+    "POS_delimiter" : "_",
+    "POS_labels":[
+        "adj",
+        "noun",
+        "propn",
+        "verb",
+        "adv"
+        ]
 }
